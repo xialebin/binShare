@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<!-- saved from url=(0027)http://youzfx.cn/article/17 -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no,user-scalable=no">
+    <meta name="keywords" content="MySQL数据库,索引,B+树,索引原理,MySQL">
+    <meta name="description" content="文章正式开始之前，我们来简单介绍下什么是索引，以及我们为什么会用到索引优化我们的数据库查询。首先我们要对一个查询的基本流程简单了解，当我们输入一个SQL进行查询的时候，那么数据库管理系统（DBMS）将经过如下流程：如上图所示，在查询优化的这一步中DBMS可以选择执行策略和操作算法，而查询算法主要分为如下两种：1：简单的全表扫描算法。2：索引扫描算法。全表扫描是怎么实现的呢？笔者用一段文字描述一下这个过程。相对靠近CPU的存储器内存的读取">
+    <meta name="author" content="夏乐宾">
+    <title>索引实现原理浅析-旋转柚子</title>
+    <link href="./索引实现原理浅析-旋转柚子_files/3.3.7bootstrap.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="http://youzfx.cn/public/static/img/sandooricon_128.ico">
+    <link rel="stylesheet" href="./索引实现原理浅析-旋转柚子_files/toastr.css">
+    <style type="text/css">
+        body {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-family:"Helvetica, Tahoma, Arial";
+            color: #555;
+        }
+
+        h1, .h1,
+        h2, .h2,
+        h3, .h3,
+        h4, .h4,
+        h5, .h5,
+        h6, .h6 {
+            margin-top: 0;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-weight: normal;
+            color: #333;
+        }
+
+
+        /*
+         * Override Bootstrap's default container.
+         */
+
+        @media (min-width: 1200px) {
+            .container {
+                width: 970px;
+            }
+        }
+
+
+        /*
+         * Masthead for nav
+         */
+
+        .blog-masthead {
+            background-color: #428bca;
+            -webkit-box-shadow: inset 0 -2px 5px rgba(0,0,0,.1);
+            box-shadow: inset 0 -2px 5px rgba(0,0,0,.1);
+        }
+
+        /* Nav links */
+        .blog-nav-item {
+            position: relative;
+            display: inline-block;
+            padding: 10px;
+            font-weight: 500;
+            color: #cdddeb;
+        }
+        .blog-nav-item:hover,
+        .blog-nav-item:focus {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* Active state gets a caret at the bottom */
+        .blog-nav .active {
+            color: #fff;
+        }
+        .blog-nav .active:after {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            margin-left: -5px;
+            vertical-align: middle;
+            content: " ";
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid;
+            border-left: 5px solid transparent;
+        }
+
+
+        /*
+         * Blog name and description
+         */
+
+        .blog-header {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .blog-title {
+            margin-top: 30px;
+            margin-bottom: 0;
+            font-size: 40px;
+            font-weight: normal;
+        }
+        .blog-description {
+            font-size: 20px;
+            color: #999;
+        }
+
+
+        /*
+         * Main column and sidebar layout
+         */
+
+        .blog-main {
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        /* Sidebar modules for boxing content */
+        .sidebar-module {
+            padding: 15px;
+            margin: 0 -15px 15px;
+        }
+        .sidebar-module-inset {
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .sidebar-module-inset p:last-child,
+        .sidebar-module-inset ul:last-child,
+        .sidebar-module-inset ol:last-child {
+            margin-bottom: 0;
+        }
+
+
+        /* Pagination */
+        .pager {
+            margin-bottom: 60px;
+            text-align: left;
+        }
+        .pager > li > a {
+            width: 140px;
+            padding: 10px 20px;
+            text-align: center;
+            border-radius: 30px;
+        }
+
+
+        /*
+         * Blog posts
+         */
+
+        .blog-post {
+            margin-bottom: 60px;
+        }
+        .blog-post-title {
+            margin-bottom: 5px;
+            font-size: 40px;
+        }
+        .blog-post-meta {
+            margin-bottom: 20px;
+            color: #999;
+        }
+
+
+        /*
+         * Footer
+         */
+
+        .blog-footer {
+            padding: 40px 0;
+            color: #999;
+            text-align: center;
+            background-color: #f9f9f9;
+            border-top: 1px solid #e5e5e5;
+        }
+        .blog-footer p:last-child {
+            margin-bottom: 0;
+        }
+
+    </style>
+
+	<script src="./索引实现原理浅析-旋转柚子_files/hm.js.下载"></script><script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?6f2118633f55d2dd39c5b0aa5f490527";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+</head>
+<body>
+
+<div class="blog-masthead">
+    <div class="container">
+        <nav class="blog-nav">
+            <a id="refund" style="cursor: pointer" class="blog-nav-item">返回</a>
+            <a class="blog-nav-item" href="http://youzfx.cn/">首页</a>
+                        <a class="blog-nav-item" href="http://youzfx.cn/blog">柚子博客</a>
+                        <a class="blog-nav-item" href="http://youzfx.cn/resource">柚子分享</a>
+                    </nav>
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="blog-header">
+        <h1 style="word-break:break-all;" class="blog-title">索引实现原理浅析</h1>
+                 <p style="font-size: 14px" class="lead blog-description">本文为作者原创内容，未经许可，禁止转载。如您发现侵权行为，请联系我们</p>
+            </div>
+
+    <div class="row">
+        <div class="col-sm-8 blog-main">
+                        <div class="row" style="margin-top: 20px">
+                <div class="span6">
+                    <nav>
+                        <ul class="breadcrumb">
+                                                        <li>
+                                <a href="http://youzfx.cn/">首页</a> <span class="divider"></span>
+                            </li>
+                                                        <li>
+                                <a href="http://youzfx.cn/blog">柚子博客</a> <span class="divider"></span>
+                            </li>
+                                                        <li>
+                                <a href="http://youzfx.cn/category/5">数据库</a> <span class="divider"></span>
+                            </li>
+                                                        <li>
+                                索引实现原理浅析 <span class="divider"></span>
+                            </li>
+                                                    </ul>
+                    </nav>
+                </div>
+            </div>
+                        <div class="blog-post">
+                               <p class="blog-post-meta">作者：夏乐宾 &nbsp;&nbsp;</p>
+                
+                <div style="color:black;word-break:break-all;font-family:Helvetica, Tahoma, Arial">
+                <div>文章正式开始之前，我们来简单介绍下什么是索引，以及我们为什么会用到索引优化我们的数据库查询。</div><div>首先我们要对一个查询的基本流程简单了解，当我们输入一个SQL进行查询的时候，那么数据库管理系统（DBMS）将经过如下流程：</div><p><img src="./索引实现原理浅析-旋转柚子_files/a9988962c0082617a5713fc35d3b4fcd.png" style="max-width:100%;"><br></p><div>如上图所示，在查询优化的这一步中DBMS可以<span>选择执行策略和操作算法</span>，而查询算法主要分为如下两种：</div><div><br></div><div><span style="font-weight: bold;">1：简单的全表扫描算法。</span></div><div><span style="font-weight: bold;">2：索引扫描算法。</span></div><div><br></div><div>全表扫描是怎么实现的呢？笔者用一段文字描述一下这个过程。</div><div><br></div><div>相对靠近CPU的存储器内存的读取速度很快，但是断电擦除数据。而能持久化保存数据的存储器叫外存或者磁盘，磁盘的工作原理是磁盘旋转，磁头变换轨道读取数据，磁盘的这种纯物理操作相当耗时，而CPU对数据的处理十分快，内存的速度介于CPU和磁盘之间，但是明显大于磁盘的速度，两者不是一个量级的。相关资料显示，访问磁盘的成本大概是访问内存的十万倍，所以为了最大发挥CPU的处理能力，会将数据通过数据总线读取到内存中，集中处理。当下的主流7200转的磁盘的一次IO约占用9ms左右的时间，你可能会觉得这个时间不算长的，但是，这对于动辄十万百万甚至千万级别的数据表就是一个灾难。现假如磁盘中的一张表有10万行数据，每一行占存储空间100字节，那么这张表约占10000KB的存储空间，每次IO读取的数据我们称之为一页（page），具体一页多大的数据跟操作系统有关，一般为4K或者8K，我们按照8K来算，磁盘中的这张表如果进行全表扫描需要10000/8=1250次IO，所需时间也已经超过了10秒。</div><div><br></div><div>如果结果选中率不高的情况下，全表扫描算法的效率十分堪忧，如从十万条数据的表中选择一条符合要求的数据，计算机辛苦的计算了10秒钟，最后得到这一条数据，工作效率备受置疑，虽然你很辛苦。所以，针对如上的种种情况，索引便应运而生。</div><div><br></div><div><span style="font-weight: bold;">索引扫描算法：</span></div><div><br></div><div>索引的思想就是，<span style="font-weight: bold;">根据表中的某个属性建立一套算法，每次查询的时候，在内存中根据该算法得到出所需要的数据的物理地址，根据物理地址直接去磁盘中拿到结果数据，不用将表中的所有数据都加载到内存扫描一遍。</span>这有点类似于，我们查字典的时候，根据偏旁部首等信息对一个汉字进行页码定位（这个过程可以看做是索引的算法执行的过程），查到一个汉字的页码，根据该页码直接找到汉字所在的页，不需要把整个字典翻一遍。</div><div><br></div><div>索引的算法有多种（Btree树、hash、R-Tree等），所以索引也被分为了BTree索引和hash索引等种类，MySQL默认建立的索引是BTree索引，本文将重点讨论，BTree索引的实现原理。</div><div><br></div><p></p><div>BTree实现的数据结构是B+树，将相关数据构建成一棵B+树，通过对树的遍历，得到查询的结果，那我们就先来见见B+树长啥样。</div><p><br></p><p><img src="./索引实现原理浅析-旋转柚子_files/36cf2c63f8a8590160daee273450a1fb.png" style="max-width:100%;"><br></p><div><span style="font-size: x-small; font-style: italic;">注：该图片来自于网络，侵权删</span></div><div><br></div><div><br></div><div>你可能会发现子树中居然存在三个节点，对的，B+树不是二叉树，我去查了下B+树的介绍，其特征概括如下：</div><div><br></div><div>1、B+树不是二叉树，m阶的B+树其子树中最多分为m叉。</div><div>2、所有的叶子节点都位于同一层。</div><div>3、所有的叶子节点包含了全部的元素信息，即含有指向这些元素的的指针（也就是地址信息）。</div><div>4、叶子节点本身依靠关键字的大小从小到大顺序链接。</div><div>5、所有的中间节点只保存索引信息，不保存数据信息。（也就是说，想找到数据，必须从根节点找到叶子节点，因为真正需要的数据都在叶子节点上）</div><div>6、所有中间节点的元素都存在于子节点，在子节点元素中是最大（或最小的）元素。</div><div><br></div><div><br></div><div>现在我们去图中找找这些特征的体现：</div><div>1、首先根节点中的8是第二层左孩子中（2、5、8）中最大的数，也是第三层中（6、8）中最大的数，同样根节点中的15在其右子树中也是按照这种规律的。这样做的好处是划分了界限，具体下面会讲到。</div><div>2、所有的叶子节点形成了一个有序链表（红框中的内容），链表的构造，是将存放数据的存储单元，拆成两部分，一部分跟之前一样存放具体的数据，而新多出来的一部分用于存放指定的下个单元的地址信息，如下图：</div><p><img src="./索引实现原理浅析-旋转柚子_files/14f9cfdc0ec1af04fa5101de6b05468d.png" style="max-width:100%;"><br></p><div>这样很多的元素通过地址绑定起来，形成了一个链表，就像赤壁之战中将每个船只串起来的铁链（有没有很形象）。</div><div>而data中存放的数据又是有序的，所以是有序链表（将船按从小到大的顺序串联起来~）。</div><div><br></div><div>3、卫星数据都存放在叶子节点中，卫星数据就是指索引最终指向的数据记录，比如我们找到了数据表中的某一行，而这一行的信息的地址一定是存放在叶子节点中，那你会问，这么多的中间节点干嘛使的，中间节点存放的索引信息是为了更快捷的找到对应的叶子节点。</div><div><br></div><div><span style="font-weight: bold;">这么设计的作用是什么呢？</span></div><p></p><div>&nbsp;B+树的好处主要是体现在查询性能上，其中有单元素的查询和范围查询，我们依次来看一下。</div><p><img src="./索引实现原理浅析-旋转柚子_files/bb92d7df98315117c08661fa622e966a.png" style="max-width:100%;"><br></p><div>单元素查询：</div><div>如上图所示，是个3阶的B+树，如果查找36，第一次IO将根节点所在的磁盘块加载到内存当中，使用二分查找法，找到指针P3，根据P3将磁盘4加载到内存中，这是第二次I0，又根据磁盘块3中的数据查找，36&lt;65，找到指针P1，根据P1进行第三次IO，将磁盘块9加载到内存中，最终找到数据。</div><div>这种查找的方式相比较于将所有的元素进行遍历查找效率高了很多，而且算法的时间复杂度更加稳定，假设我们只找一个元素，那么所有数据进行遍历的情况，存在很大的偶然性，最好的情况第一个元素就找到了，最坏的情况在所有数据的最后一次比较中找到，所以很不稳定。</div><div><br></div><div>范围查找：</div><div>我们上面的查找只用到了中间节点的索引，去寻找叶子节点，既然B+维护了叶子节点的链表结构，肯定也是有作用的，，范围查找就用到了，比如我们查找3到11之间的元素，没必要每次从查找从中间节点反复游走（比如，B-树在查询范围的时候就是通过中序遍历不断的查找），此时在B+中只需要找到范围的下限，然后通过有序链表直接往下游遍历就行了。我们先通过根节点找到3所在的位置，根据3中对应的指针信息往下找直到找到11跳出。</div><div><br></div><div>所以B+树相对于其他树的优势有：</div><div><span style="font-weight: bold;">1、单一节点存放更多的元素（因为，中间节点不存放数据，所以节省了很多的存储空间用于存放很多用于索引的元素，这样我们查询的IO次数也就更少了）。</span></div><div>2、所有的查询都得找到叶子节点，查询性能稳定。</div><div>3、叶子节点中的有序链表便于范围查询。</div><div><br></div><h4><span style="font-weight: bold;">补充内容：</span></h4><div><span style="font-weight: bold; color: rgb(249, 150, 59);">那么我们在使用B+树建立索引的时候，一棵B+树最多能表示多少条数据呢？</span></div><div>具体来看看InnoDB一棵B+树能存放多少行&nbsp;数据。答案是约2千万行。计算方式如下：</div><p></p><div>InnoDB存储引擎的最小存储单元是页（page），而在MySQL中InnoDB页的大小默认是16K，这个可以通过参数进行设置：</div><pre><code>mysql&gt; show variables like 'innodb_page_size';<br>+------------------+-------+<br>| Variable_name    | Value |<br>+------------------+-------+<br>| innodb_page_size | 16384 |<br>+------------------+-------+<br>1 row in set (0.00 sec)</code></pre><div><span>数据表中的数据都是存储在页中的，所以一个页中能存储多少行数据呢？假设一行数据的大小是1k，那么一个页可以存放16行这样的数据。</span></div><div><font color="#333333" face="Georgia"><span>现在假设B+树的高度为2，那么树的第一层，可存储的指针是多少呢？如果我们建立索引的字段类型是bigint，即长度为8字节，而指针大小在InnoDB源码中设置为6字节，那么数据+指针共占用14字节。这里忽略了，多出来的一个指针所占用的空间，从上文中可知，一个节点中指针个数=关键字个数+1。</span></font></div><div><font color="#333333" face="Georgia"><span><br></span></font></div><div><font color="#333333" face="Georgia"><span>那么一页中可以表示多少个关键字，即16*1024/（6+8） = 1170。这是树的第一层。</span></font></div><div>第二层即为叶子节点层，而叶子节点中存储的是数据，一页中可表示的数据为16行。所以2层B+树在InnoDB引擎中可存储约1170*16=18720行数据。</div><p></p><div>同理，三层树可表示：1170*1170*16= 21902400条数据。</div><pre><code>Tip:<br>B+树为何能一直保持平衡：<br>这跟B+树的构建与插入有关，简单概述：B+树插入的时候，会先进行查找，找到该值对应的节点， 进行插入，如果节点中的关键字不超过M-1（如果是3阶B+树的话，即不超过2），则直接插入成功，如果超过M-1，则节点进行分裂，该节点中的添加到父级节点中。以此类推。<br><br>为什么MySQL的索引要使用B+树而不是其它树形结构?比如B树？<br>因为B树不管叶子节点还是非叶子节点，都会保存数据，这样导致在非叶子节点中能保存的指针数量变少（有些资料也称为扇出），指针少的情况下要保存大量数据，只能增加树的高度，导致IO操作变多，查询性能变低；</code></pre>                </div>
+
+            </div><!-- /.blog-post -->
+
+          <!--  <nav>
+                <ul class="pager">
+                    <li><a href="#">回到开始</a></li>
+                    <li><a href="#">下一篇文章</a></li>
+                </ul>
+            </nav>-->
+
+        </div><!-- /.blog-main -->
+
+                <div class="col-sm-3 col-sm-offset-1 blog-sidebar">
+            <div class="sidebar-module">
+                <h4>浏览信息</h4>
+                <p>浏览量：<span style="font-family:Helvetica, Tahoma, Arial">10553</span></p>
+            </div>
+            <div class="sidebar-module">
+                <h4>其他文章</h4>
+                <ol class="list-unstyled">
+                                        <li><a href="http://youzfx.cn/article/18">MySQL中索引应用浅析</a></li>
+                                        <li><a href="http://youzfx.cn/article/7">关系数据库系列文章之数据库的完整性（三）</a></li>
+                                        <li><a href="http://youzfx.cn/article/5"> 关系数据库系列文章之数据的操作（二）</a></li>
+                                        <li><a href="http://youzfx.cn/article/4">关系数据库系列文章之到底什么是关系（一）</a></li>
+                                        <li><a href="http://youzfx.cn/article/19">《图解HTTP》读书笔记</a></li>
+                                        <li><a href="http://youzfx.cn/article/14">如何使用Xdebug系列之三 使用xdebug分析PHP程序</a></li>
+                                        <li><a href="http://youzfx.cn/article/13">如何使用Xdebug系列之二 使用xdebug跟踪PHP程序</a></li>
+                                        <li><a href="http://youzfx.cn/article/12">如何使用Xdebug系列之一 介绍和安装Xdebug</a></li>
+                                        <li><a href="http://youzfx.cn/article/11">Xdebug从安装到简单使用</a></li>
+                                        <li><a href="http://youzfx.cn/article/9">PHP缓冲区的了解（buffer）</a></li>
+                                        <li><a href="http://youzfx.cn/article/8">探讨程序设计语言中的异常处理机制的由来</a></li>
+                                        <li><a href="http://youzfx.cn/article/6">如何在云服务器上搭建SVN，SVN的搭建</a></li>
+                                        <li><a href="http://youzfx.cn/article/3">说说PHP中的ip2long和long2ip</a></li>
+                                        <li><a href="http://youzfx.cn/article/1">抓包工具charles的下载与使用</a></li>
+                                    </ol>
+            </div>
+            <div class="sidebar-module">
+                <h4>联系渠道</h4>
+                <ol class="list-unstyled">          
+                    <li><a href="http://youzfx.cn/we">联系我们</a></li>
+                </ol>
+            </div>
+        </div><!-- /.blog-sidebar -->
+        
+    </div><!-- /.row -->
+
+    <div id="show_comment"><div style="line-height:1.1;margin-top: 5px" class="col-sm-8"><span class="label label-default"><b>哈喽</b></span>:<span style="font-size: small;color: black;word-break:break-all;">为什么MySQL的索引要使用B+树而不是其它树形结构?比如B树？
+因为B树不管叶子节点还是非叶子节点，都会保存数据，这样导致在非叶子节点中能保存的指针数量变少（有些资料也称为扇出），指针少的情况下要保存大量数据，只能增加树的高度，导致IO操作变多，查询性能变低；</span></div></div>
+
+    <div style="margin-top: 10px" class="col-sm-8 blog-main">
+    <ul id="page" style="font-size: 5px" class="pagination col-sm-8"></ul>
+
+    </div>
+
+
+    <div style="margin-top: 10px" class="col-sm-8 blog-main">
+        <div class="blog-post">
+            <textarea id="comment" class="form-control" style="resize: none;display: inline;font-family:Helvetica, Tahoma, Arial" rows="3" placeholder="这里可以留下您的评论，150个字符限制.."></textarea>
+            <button id="comment_submit" class="btn btn-primary">发布</button>
+        </div>
+    </div>
+
+
+</div><!-- /.container -->
+
+<footer class="blog-footer">
+    <p>知其然，知其所以然 by <a href="http://youzfx.cn/">@旋转柚子</a>.</p>
+    <p>
+        <a href="http://youzfx.cn/article/17#">回到顶部</a>
+    </p>
+</footer>
+
+<script src="./索引实现原理浅析-旋转柚子_files/3.2.1jquery.slim.min.js.下载"></script>
+<script src="./索引实现原理浅析-旋转柚子_files/poper.min.js.下载"></script>
+<script src="./索引实现原理浅析-旋转柚子_files/bootstrap.min.js.下载"></script>
+<script src="./索引实现原理浅析-旋转柚子_files/toastr.js.下载"></script>
+
+<script type="text/javascript">
+    var article_id = '17';
+    toastr.options = {
+        closeButton: false,
+        debug: false,
+        progressBar: true,
+        positionClass: "toast-bottom-full-width",
+        onclick: null,
+        showDuration: "300",
+        hideDuration: "1000",
+        timeOut: "2000",
+        extendedTimeOut: "1000",
+        showEasing: "swing",
+        hideEasing: "linear",
+        showMethod: "fadeIn",
+        hideMethod: "fadeOut"
+    };
+
+    $(function () {
+       initComment(1);
+    });
+
+    function initComment(current_page){
+        if(current_page == 0){
+            return true;
+        }
+        $('#page').html('');
+        $('#show_comment').html('');
+        var str = "";
+        var p_str = "";
+        //将页面中的数据进行清空处理
+        $.ajax({
+            'type':'post',
+            'dataType':'json',
+            'data':{'article_id':article_id,'page':current_page},
+            'url':'/index/article/getComment',
+            success:function (data) {
+                if(data.code == 0){
+                    var page = data.info.page;
+                    var num = data.info.num;
+                    if (num <= 9 && num>1){
+                        for (var i=1;i<(num+1);i++){
+                            if(page == i){
+                                p_str += "<li class='active'><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                            }else {
+                                p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                            }
+                        }
+                    }else if(num >9){
+                        for (var i=1;i<(num+1);i++){
+
+                            if(page>2 && page<(num-1)){
+
+                                if(i==1){
+                                    p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                    continue;
+                                }
+
+                                if(i==(page-1)){
+                                    p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                    p_str += "<li class='active'><a onclick='initComment("+(i+1)+")'>"+(i+1)+"</a></li>";
+                                    p_str += "<li><a onclick='initComment("+(i+2)+")'>"+(i+2)+"</a></li>";
+                                    p_str += "<li><a onclick='initComment(0)'>...</a></li>";
+                                    p_str += "<li><a onclick='initComment("+num+")'>"+num+"</a></li>";
+                                    i=num;
+                                }else {
+                                    p_str += "<li><a onclick='initComment(0)'>...</a></li>";
+                                    i=page-2;
+                                }
+                            }else {
+                                if(i==4){
+                                    p_str += "<li><a onclick='initComment(0)'>...</a></li>";
+                                    i = num-3;
+                                    continue;
+                                }
+                                if(page == i){
+                                    p_str += "<li class='active'><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                }else {
+                                    p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                }
+                            }
+                        }
+                    }
+                    $('#page').append(p_str);
+                    $.each(data.info.info,function (i,value) {
+                        str += "<div style='line-height:1.1;margin-top: 5px' class='col-sm-8'>";
+                        str += "<span class='label label-default'><b>"+value['name']+"</b></span>:";
+                        str += "<span style='font-size: small;color: black;word-break:break-all;'>"+value['content']+"</span>";
+                        str += "</div>";
+                    });
+                    $('#show_comment').append(str);
+                }
+            },
+            error:function () {
+                toastr.error('服务器有点跟不上您的速度哦~');
+            }
+        });
+    }
+
+    //toastr.warning('warning!!!');
+    $('#comment_submit').click(function () {
+        $("#comment_submit").attr('disabled','disabled');
+        var comment = $('#comment').val();
+        if(comment.length<10){
+            toastr.warning('请输入至少10个字符');
+            $("#comment_submit").removeAttr("disabled");
+            return false;
+        }
+        if(comment.length>150){
+            toastr.warning('评论字数最多150个字符');
+            $("#comment_submit").removeAttr("disabled");
+            return false;
+        }
+
+        $.ajax({
+            'type':'post',
+            'dataType':'json',
+            'data':{'comment':comment,'article_id':article_id},
+            'url':'/index/article/saveComment',
+            success:function (data) {
+                if(data.code == 2){
+                    $("#comment_submit").removeAttr("disabled");
+                    window.location.href='/login/2';
+                }else {
+                    if(data.code==0){
+                        toastr.success(data.msg);
+                        setTimeout(function () {
+                            window.location.reload();
+                        },1000);
+                        return true;
+                    }else {
+                        toastr.warning(data.msg);
+                        $("#comment_submit").removeAttr("disabled");
+                    }
+                }
+            },
+            error:function(){
+                toastr.error('服务器错误，请稍后重新尝试');
+                $("#comment_submit").removeAttr("disabled");
+            }
+        });
+    });
+
+
+    $('#refund').click(function () {
+        window.history.back(-1);
+    });
+</script>
+
+
+
+</body></html>

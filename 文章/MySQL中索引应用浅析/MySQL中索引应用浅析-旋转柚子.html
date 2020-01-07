@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<!-- saved from url=(0027)http://youzfx.cn/article/18 -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no,user-scalable=no">
+    <meta name="keywords" content="索引,数据库,MySQL,程序员">
+    <meta name="description" content="在了解了索引实现原理之后，本文将来讨论索引在MySQL中的种类与应用。在MySQL中，在创建表的时候要指定表的存储引擎（关于MySQL的存储引擎的介绍见文章《MySQL存储引擎浅析》），MySQL中广泛使用的存储引擎有两种：MyISAM和InnoDB，这两种存储引擎均支持B树索引。那么在B树索引下又细分了几种索引：1、聚集索引（又称聚簇索引）2、非聚集索引（非聚簇索引）唯一索引普通索引复合索引聚集索引（聚簇索引）：那什么是聚集索引呢？数">
+    <meta name="author" content="夏乐宾">
+    <title>MySQL中索引应用浅析-旋转柚子</title>
+    <link href="./MySQL中索引应用浅析-旋转柚子_files/3.3.7bootstrap.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="http://youzfx.cn/public/static/img/sandooricon_128.ico">
+    <link rel="stylesheet" href="./MySQL中索引应用浅析-旋转柚子_files/toastr.css">
+    <style type="text/css">
+        body {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-family:"Helvetica, Tahoma, Arial";
+            color: #555;
+        }
+
+        h1, .h1,
+        h2, .h2,
+        h3, .h3,
+        h4, .h4,
+        h5, .h5,
+        h6, .h6 {
+            margin-top: 0;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-weight: normal;
+            color: #333;
+        }
+
+
+        /*
+         * Override Bootstrap's default container.
+         */
+
+        @media (min-width: 1200px) {
+            .container {
+                width: 970px;
+            }
+        }
+
+
+        /*
+         * Masthead for nav
+         */
+
+        .blog-masthead {
+            background-color: #428bca;
+            -webkit-box-shadow: inset 0 -2px 5px rgba(0,0,0,.1);
+            box-shadow: inset 0 -2px 5px rgba(0,0,0,.1);
+        }
+
+        /* Nav links */
+        .blog-nav-item {
+            position: relative;
+            display: inline-block;
+            padding: 10px;
+            font-weight: 500;
+            color: #cdddeb;
+        }
+        .blog-nav-item:hover,
+        .blog-nav-item:focus {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        /* Active state gets a caret at the bottom */
+        .blog-nav .active {
+            color: #fff;
+        }
+        .blog-nav .active:after {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            margin-left: -5px;
+            vertical-align: middle;
+            content: " ";
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid;
+            border-left: 5px solid transparent;
+        }
+
+
+        /*
+         * Blog name and description
+         */
+
+        .blog-header {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .blog-title {
+            margin-top: 30px;
+            margin-bottom: 0;
+            font-size: 40px;
+            font-weight: normal;
+        }
+        .blog-description {
+            font-size: 20px;
+            color: #999;
+        }
+
+
+        /*
+         * Main column and sidebar layout
+         */
+
+        .blog-main {
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        /* Sidebar modules for boxing content */
+        .sidebar-module {
+            padding: 15px;
+            margin: 0 -15px 15px;
+        }
+        .sidebar-module-inset {
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .sidebar-module-inset p:last-child,
+        .sidebar-module-inset ul:last-child,
+        .sidebar-module-inset ol:last-child {
+            margin-bottom: 0;
+        }
+
+
+        /* Pagination */
+        .pager {
+            margin-bottom: 60px;
+            text-align: left;
+        }
+        .pager > li > a {
+            width: 140px;
+            padding: 10px 20px;
+            text-align: center;
+            border-radius: 30px;
+        }
+
+
+        /*
+         * Blog posts
+         */
+
+        .blog-post {
+            margin-bottom: 60px;
+        }
+        .blog-post-title {
+            margin-bottom: 5px;
+            font-size: 40px;
+        }
+        .blog-post-meta {
+            margin-bottom: 20px;
+            color: #999;
+        }
+
+
+        /*
+         * Footer
+         */
+
+        .blog-footer {
+            padding: 40px 0;
+            color: #999;
+            text-align: center;
+            background-color: #f9f9f9;
+            border-top: 1px solid #e5e5e5;
+        }
+        .blog-footer p:last-child {
+            margin-bottom: 0;
+        }
+
+    </style>
+
+	<script src="./MySQL中索引应用浅析-旋转柚子_files/hm.js.下载"></script><script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?6f2118633f55d2dd39c5b0aa5f490527";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+</head>
+<body>
+
+<div class="blog-masthead">
+    <div class="container">
+        <nav class="blog-nav">
+            <a id="refund" style="cursor: pointer" class="blog-nav-item">返回</a>
+            <a class="blog-nav-item" href="http://youzfx.cn/">首页</a>
+                        <a class="blog-nav-item" href="http://youzfx.cn/blog">柚子博客</a>
+                        <a class="blog-nav-item" href="http://youzfx.cn/resource">柚子分享</a>
+                    </nav>
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="blog-header">
+        <h1 style="word-break:break-all;" class="blog-title">MySQL中索引应用浅析</h1>
+                 <p style="font-size: 14px" class="lead blog-description">本文为作者原创内容，未经许可，禁止转载。如您发现侵权行为，请联系我们</p>
+            </div>
+
+    <div class="row">
+        <div class="col-sm-8 blog-main">
+                        <div class="row" style="margin-top: 20px">
+                <div class="span6">
+                    <nav>
+                        <ul class="breadcrumb">
+                                                        <li>
+                                <a href="http://youzfx.cn/">首页</a> <span class="divider"></span>
+                            </li>
+                                                        <li>
+                                <a href="http://youzfx.cn/blog">柚子博客</a> <span class="divider"></span>
+                            </li>
+                                                        <li>
+                                <a href="http://youzfx.cn/category/5">数据库</a> <span class="divider"></span>
+                            </li>
+                                                        <li>
+                                MySQL中索引应用浅析 <span class="divider"></span>
+                            </li>
+                                                    </ul>
+                    </nav>
+                </div>
+            </div>
+                        <div class="blog-post">
+                               <p class="blog-post-meta">作者：夏乐宾 &nbsp;&nbsp;</p>
+                
+                <div style="color:black;word-break:break-all;font-family:Helvetica, Tahoma, Arial">
+                <div><br></div><p>在了解了<a href="http://youzfx.cn/article/17" target="_blank" style="background-color: rgb(255, 255, 255);">索引实现原理</a>之后，本文将来讨论索引在MySQL中的种类与应用。</p><div>在MySQL中，在创建表的时候要指定表的存储引擎（关于MySQL的存储引擎的介绍见文章《MySQL存储引擎浅析》），MySQL中广泛使用的存储引擎有两种：MyISAM和InnoDB，这两种存储引擎均支持B树索引。</div><div><br></div><div>那么在B树索引下又细分了几种索引：</div><div><br></div><div>1、聚集索引（又称聚簇索引）</div><p></p><div>2、非聚集索引（非聚簇索引）&nbsp;</div><p></p><ul><li><div>唯一索引</div></li><li><div>普通索引</div></li><li><div>复合索引</div></li></ul><p><br></p><p><span style="font-weight: bold; font-size: x-large;">聚集索引（聚簇索引）：</span></p><div>那什么是聚集索引呢？</div><p></p><div>数据行的<span style="font-weight: bold;">物理顺序</span>与列值（一般就是主键的那一列）的逻辑顺序相同，<span style="font-weight: bold;">且一个表中只能有一个聚集索引。</span></div><p><img src="./MySQL中索引应用浅析-旋转柚子_files/a323c8a519895b425aee1119484596cf.png" style="max-width:100%;"><br></p><p></p><div>数据表在存储的时候，每一行数据都会对应一个物理地址，如果一个表中没有指定主键，那么表在存储的时候不会按照表中的某一列进行参照存储，从表的逻辑上来看是乱序的。而如果指定了主键，存储的时候会参照主键的顺序进行顺序存储，且MySQL会默认给主键建立一个聚集索引，且主键是自动递增的。总之一句话：数据表中每一行存储时会按照聚集索引去进行物理存储。</div><p><br></p><h4><span style="font-weight: bold;">聚集索引的创建与删除：&nbsp;&nbsp;</span></h4><ul><li><div>建表的时候建立：</div></li></ul><div><pre><code>CREATE TABLE `student` (<br>`id` int(4) NOT NULL AUTO_INCREMENT,<br>`name` char(20) NOT NULL,<br>PRIMARY KEY (id)  --声明主键，即给ID添加了一个聚集索引<br>) ENGINE=MyISAM DEFAULT CHARSET=utf8</code></pre></div><ul><li><div>表外创建：</div></li></ul><div><div><pre><code>alter table 表名 add primary key(列名);</code></pre></div><div><span style="font-size: small;"><span style="color: rgb(249, 150, 59);">tip:</span>在创建聚集索引的时候，会检测该列上是否有重复的值，如果有则创建失败</span></div></div><ul><li><div>删除聚集索引</div></li></ul><p></p><div><pre><code>alter table 表名 drop primary key;</code></pre><p><span style="color: rgb(249, 150, 59);">tip:</span>最好是在建表的时候声明主键，否则在表中已经有数据的情况下去建立主键，会根据索引列的排序去移动数据行的存储顺序，消耗性能。&nbsp; &nbsp;&nbsp;<br></p><p><br></p><p><span style="font-weight: bold; font-size: x-large;">非聚集索引：</span></p><p></p><div>如果了解了聚集索引，那么非聚集索引就比较容易理解，例如，我们在ID列上建立聚集索引，而表中的name列在存储形式上，就不会按照一定的逻辑顺序存储，此时在该列上建立的索引即为非聚集索引，<span>那么符合这个特性的都可以叫做非聚集索引</span>，<span style="font-weight: bold;">一个表中可以有多个非聚集索引。</span></div></div><div><span style="font-weight: bold;"><br></span></div><div><h4><span style="font-weight: bold;">唯一索引：</span></h4><div>唯一索引，即保证某一列上的所有的值不会重复。但是，索引的功能不是优化我们的查询吗，这里为什么会用到索引，是因为DBMS为了保证每次插入的值不会重复，会根据插入的值去列中进行检索对比，而检索的过程为了提高性能就会使用到索引，所以唯一索引就是：检索，如果有重复的值拒绝插入。</div><div><br></div><div>笔者在文章<a href="http://youzfx.cn/article/7" target="_blank" style="background-color: rgb(255, 255, 255);">《数据库的完整性》</a>中列举过“完成性约束”，而用户自定义的“列值上的唯一性约束”，与唯一索引有什么区别呢？</div><div><br></div><div>在网上看到一篇文章(链接附在文末)，大意总结如下：</div><div><br></div><div>在MySQL中唯一约束与唯一索引只是概念上的不同（约束是为了保证数据的完整性，索引是为了辅助查询），除了概念上的不同，两者没有其他的差别了，因为在创建唯一约束时，为自动创建唯一索引。因为唯一约束的实现逻辑为：要保证插入时没有充重复的值，会全部检索一遍数据，为了检索的效率会同步创建唯一索引。</div><div><br></div><div>可以这样理解：<span style="font-weight: bold;">两者的概念不同，但是都是同样的实现方式。</span></div></div><div><span style="font-weight: bold;"><br></span></div><div>亲自动手实验下：&nbsp;</div><pre><code>create table zds_student(<br>id int(10) unsigned not null auto_increment comment '表ID',<br>name VARCHAR(32) <span style="background-color: rgb(194, 79, 74);">unique</span> not null default '',<br>age int not null,<br>primary key(id)<br>)engine=myisam default charset=utf8;</code></pre><div>标红处即为唯一性约束。<br></div><div>&nbsp;&nbsp;&nbsp;<span style="font-weight: bold;"><br></span></div><p>再执行如下SQL：&nbsp; &nbsp;&nbsp;<br></p><pre><code>show index from zds_student;</code></pre><p><img src="./MySQL中索引应用浅析-旋转柚子_files/7ab92aed170cd341d93b7f08d1377877.png" style="max-width:100%;"><br></p><p>如我们所料，在声明完整性约束时就创建了唯一索引。&nbsp; &nbsp;</p><p>&nbsp;<br></p><p><span style="font-weight: bold;">唯一索引的创建与删除：&nbsp; &nbsp;&nbsp;</span><br></p><ul><li>建表的时候建立：&nbsp; &nbsp;&nbsp;</li></ul><pre><code>create table zds_student(<br>id int(10) unsigned not null auto_increment comment '表ID',<br>name VARCHAR(32) not null default '',<br>age int not null,<br>primary key(id),<br>unique index index_unique(name)<br>)engine=myisam default charset=utf8;<br><br>tip:其中index_unique是索引的名称，也可以这样写：unique key(name)，此时索引名默认为列名，即name</code></pre><p></p><ul><li><span style="font-size: 14px;">表外创建：</span></li></ul><p></p><pre><code>alter table 表名 add unique index(列名);//默认唯一索引名为列名<br>alter table 表名 add unique index 自定义索引名(列名);//可以自定义索引名称</code></pre><p></p><ul><li><span style="font-size: 14px;">删除&nbsp; &nbsp;&nbsp;<br></span></li></ul><p></p><pre><code>alter table 表名 drop index 索引名称;</code></pre><p><br></p><div>相比较上面几种有特定功能的索引，普通索引则没有专门定制的功能，其存在就是为了增加检索性能。</div><p></p><div>其创建删除与唯一索引类似，只是将unique修饰符去掉即可，这里不再赘述。</div><p><span style="font-weight: bold;"><br></span></p><h4><span style="font-weight: bold;">复合索引：&nbsp; &nbsp;&nbsp;</span></h4><div><div>在具体说明复合索引之前，我们需要知道的是，构建聚集索引和非聚集索引的B+树的叶子节点上存储的数据不同：</div><div>1、<span style="font-weight: bold;">在聚集索引的叶子节点上，包含了一条记录的所有数据。</span>即一个节点携带表中的一行数据。</div><div>2、在非聚集索引的叶子节点上，如果表中包含了聚集索引，那么<span style="font-weight: bold;">叶子节点上则包含了非聚集索引字段的值与聚集索引字段的值。</span></div></div><div><span style="font-weight: bold;"><br></span></div><div><span>假设表中有三个字段，ID，username,score，其中在id上建立了聚集索引，在username上建立了非聚集索引</span></div><p></p><div>所以，当我们进行如下的查询的时候：</div><pre><code>select id,username from table where username ='毛羽';<br>select username from table username = '毛羽';</code></pre><p>不需要进行二次查询，因为我们可以直接在叶子节点上得到想要的值。但，如果进行如下的查询：&nbsp;</p><pre><code>select username,score from table where username='毛羽';</code></pre><p>就会进行二次查询，因为从也在节点上得到了username,但是没有score，会根据叶子节点<span style="font-weight: bold;">聚集索引的值</span>进行二次查询。&nbsp;&nbsp;<br></p><p>&nbsp;<span style="color: rgb(249, 150, 59);"> &nbsp;tip：</span>在数据量不大的情况下，DBMS有可能不会使用非聚集索引进行查询，而是使用聚集索引进行查询，即便是扫描整个聚集索引，效率也会比使用非聚集索引高。<br></p><p><br></p><div>如何解决非聚集索引的二次查询，可以使用<span style="font-weight: bold;">复合索引（联合索引）</span>，即建立两列以上的索引，如index(clo1,clo2);</div><p></p><div>复合索引遵循“最左匹配原则”，假如有字段A,B,C三个字段，建立复合索引index(A,B,C)，如果执行</div><pre><code>select A,B,C from table  where B='TEST'</code></pre><p>复合索引不会使用，&nbsp;因为不符合<span style="font-weight: bold;">“最左匹配原则”，</span>条件中没有出现最左边的A元素。&nbsp;</p><pre><code>select A,B,C from table  where A='TEST' and C='TEST'<br>select A,B,C from table  where A='TEST' and B='TEST' and C='TEST';<br>select A,B,C from table  where A='TEST' and B='TEST';</code></pre><p>复合索引会被使用&nbsp;</p><p><br></p><p>动手实验见如下表：（zds_area表共有四个字段，area_id,parent_id,area_name,sort）&nbsp; &nbsp;<br></p><p><img src="./MySQL中索引应用浅析-旋转柚子_files/4849fb8f8d647b65647fda0feae157c7.png" style="max-width:100%;"><br></p><p><br></p><p><span style="font-weight: bold;">那为什么会最左原则呢？</span>我们看下复合索引创建的原理：&nbsp; &nbsp;&nbsp;<br></p><p>&nbsp; &nbsp;<img src="./MySQL中索引应用浅析-旋转柚子_files/23753f9d9519107193e3af75daaa4055.png" style="max-width: 100%;"><br></p><p></p><div><span style="font-style: italic; font-size: small;">注：图片来自互联网，侵权删。</span></div><div><span style="font-style: italic;"><br></span></div><div><div>如上图所示，如果复合索引有三列，<span style="font-weight: bold;">会根据三列中的第一列，建立B+树</span>，即图中的绿色部分，而叶子节点中存放所有的数据。假如复合索引的三列为(age,name,flag)，进行检索的时候，会根据age的值检索出叶子节点中的内容，将所有相同age的值加载到内存中，然后再根据name的值和flag值进行筛选得出最终结果。如果，使用 （张三,1234）这样的条件进行检索，b+树就不知道下一步该查哪个节点，因为建立搜索树的时候age就是第一个比较因子，必须要先根据age来搜索才能知道下一步去哪里查询。<span style="font-weight: bold;">这就是“最左匹配原则”。</span>所以想要使用复合索引，一定把最左列包含进条件中。</div></div><p><br></p><div>补充：</div><p></p><div>创建索引的原则：</div><pre><code>1.=和in可以乱序，比如a = 1 and b = 2 and c = 3 建立(a,b,c)索引可以任意顺序，mysql的查询优化器会帮你优化成索引可以识别的形式<br>2.尽量选择区分度高的列作为索引,区分度的公式是count(distinct col)/count(*)，表示字段不重复的比例，比例越大我们扫描的记录数越少，唯一键的区分度是1，而一些状态、性别字段可能在大数据面前区分度就是0，那可能有人会问，这个比例有什么经验值吗？使用场景不同，这个值也很难确定，一般需要join的字段我们都要求是0.1以上，即平均1条扫描10条记录<br>3.索引列不能参与计算，保持列“干净”，比如from_unixtime(create_time) = ’2014-05-29’就不能使用到索引，原因很简单，b+树中存的都是数据表中的字段值，但进行检索时，需要把所有元素都应用函数才能比较，显然成本太大。所以语句应该写成create_time = unix_timestamp(’2014-05-29’);<br>4.尽量的扩展索引，不要新建索引。比如表中已经有a的索引，现在要加(a,b)的索引，那么只需要修改原来的索引即可</code></pre><p><br></p><div>参考文献：</div><div>1.《高性能MySQL》</div><p></p><div>2.《数据结构与算法分析》&nbsp;</div><p><br></p><div>唯一性约束与唯一索引的区别观点摘自：</div><div><a href="https://blog.csdn.net/mrzhouxiaofei/article/details/79719529">https://blog.csdn.net/mrzhouxiaofei/article/details/79719529</a></div><div>非聚集索引叶子节点数据组成摘自：</div><p></p><div><a href="https://www.cnblogs.com/xwdreamer/archive/2012/07/18/2596984.html">https://www.cnblogs.com/xwdreamer/archive/2012/07/18/2596984.html</a></div><p>感谢。</p>                </div>
+
+            </div><!-- /.blog-post -->
+
+          <!--  <nav>
+                <ul class="pager">
+                    <li><a href="#">回到开始</a></li>
+                    <li><a href="#">下一篇文章</a></li>
+                </ul>
+            </nav>-->
+
+        </div><!-- /.blog-main -->
+
+                <div class="col-sm-3 col-sm-offset-1 blog-sidebar">
+            <div class="sidebar-module">
+                <h4>浏览信息</h4>
+                <p>浏览量：<span style="font-family:Helvetica, Tahoma, Arial">1153</span></p>
+            </div>
+            <div class="sidebar-module">
+                <h4>其他文章</h4>
+                <ol class="list-unstyled">
+                                        <li><a href="http://youzfx.cn/article/17">索引实现原理浅析</a></li>
+                                        <li><a href="http://youzfx.cn/article/7">关系数据库系列文章之数据库的完整性（三）</a></li>
+                                        <li><a href="http://youzfx.cn/article/5"> 关系数据库系列文章之数据的操作（二）</a></li>
+                                        <li><a href="http://youzfx.cn/article/4">关系数据库系列文章之到底什么是关系（一）</a></li>
+                                        <li><a href="http://youzfx.cn/article/19">《图解HTTP》读书笔记</a></li>
+                                        <li><a href="http://youzfx.cn/article/14">如何使用Xdebug系列之三 使用xdebug分析PHP程序</a></li>
+                                        <li><a href="http://youzfx.cn/article/13">如何使用Xdebug系列之二 使用xdebug跟踪PHP程序</a></li>
+                                        <li><a href="http://youzfx.cn/article/12">如何使用Xdebug系列之一 介绍和安装Xdebug</a></li>
+                                        <li><a href="http://youzfx.cn/article/11">Xdebug从安装到简单使用</a></li>
+                                        <li><a href="http://youzfx.cn/article/9">PHP缓冲区的了解（buffer）</a></li>
+                                        <li><a href="http://youzfx.cn/article/8">探讨程序设计语言中的异常处理机制的由来</a></li>
+                                        <li><a href="http://youzfx.cn/article/6">如何在云服务器上搭建SVN，SVN的搭建</a></li>
+                                        <li><a href="http://youzfx.cn/article/3">说说PHP中的ip2long和long2ip</a></li>
+                                        <li><a href="http://youzfx.cn/article/1">抓包工具charles的下载与使用</a></li>
+                                    </ol>
+            </div>
+            <div class="sidebar-module">
+                <h4>联系渠道</h4>
+                <ol class="list-unstyled">          
+                    <li><a href="http://youzfx.cn/we">联系我们</a></li>
+                </ol>
+            </div>
+        </div><!-- /.blog-sidebar -->
+        
+    </div><!-- /.row -->
+
+    <div id="show_comment"></div>
+
+    <div style="margin-top: 10px" class="col-sm-8 blog-main">
+    <ul id="page" style="font-size: 5px" class="pagination col-sm-8"></ul>
+
+    </div>
+
+
+    <div style="margin-top: 10px" class="col-sm-8 blog-main">
+        <div class="blog-post">
+            <textarea id="comment" class="form-control" style="resize: none;display: inline;font-family:Helvetica, Tahoma, Arial" rows="3" placeholder="这里可以留下您的评论，150个字符限制.."></textarea>
+            <button id="comment_submit" class="btn btn-primary">发布</button>
+        </div>
+    </div>
+
+
+</div><!-- /.container -->
+
+<footer class="blog-footer">
+    <p>知其然，知其所以然 by <a href="http://youzfx.cn/">@旋转柚子</a>.</p>
+    <p>
+        <a href="http://youzfx.cn/article/18#">回到顶部</a>
+    </p>
+</footer>
+
+<script src="./MySQL中索引应用浅析-旋转柚子_files/3.2.1jquery.slim.min.js.下载"></script>
+<script src="./MySQL中索引应用浅析-旋转柚子_files/poper.min.js.下载"></script>
+<script src="./MySQL中索引应用浅析-旋转柚子_files/bootstrap.min.js.下载"></script>
+<script src="./MySQL中索引应用浅析-旋转柚子_files/toastr.js.下载"></script>
+
+<script type="text/javascript">
+    var article_id = '18';
+    toastr.options = {
+        closeButton: false,
+        debug: false,
+        progressBar: true,
+        positionClass: "toast-bottom-full-width",
+        onclick: null,
+        showDuration: "300",
+        hideDuration: "1000",
+        timeOut: "2000",
+        extendedTimeOut: "1000",
+        showEasing: "swing",
+        hideEasing: "linear",
+        showMethod: "fadeIn",
+        hideMethod: "fadeOut"
+    };
+
+    $(function () {
+       initComment(1);
+    });
+
+    function initComment(current_page){
+        if(current_page == 0){
+            return true;
+        }
+        $('#page').html('');
+        $('#show_comment').html('');
+        var str = "";
+        var p_str = "";
+        //将页面中的数据进行清空处理
+        $.ajax({
+            'type':'post',
+            'dataType':'json',
+            'data':{'article_id':article_id,'page':current_page},
+            'url':'/index/article/getComment',
+            success:function (data) {
+                if(data.code == 0){
+                    var page = data.info.page;
+                    var num = data.info.num;
+                    if (num <= 9 && num>1){
+                        for (var i=1;i<(num+1);i++){
+                            if(page == i){
+                                p_str += "<li class='active'><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                            }else {
+                                p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                            }
+                        }
+                    }else if(num >9){
+                        for (var i=1;i<(num+1);i++){
+
+                            if(page>2 && page<(num-1)){
+
+                                if(i==1){
+                                    p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                    continue;
+                                }
+
+                                if(i==(page-1)){
+                                    p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                    p_str += "<li class='active'><a onclick='initComment("+(i+1)+")'>"+(i+1)+"</a></li>";
+                                    p_str += "<li><a onclick='initComment("+(i+2)+")'>"+(i+2)+"</a></li>";
+                                    p_str += "<li><a onclick='initComment(0)'>...</a></li>";
+                                    p_str += "<li><a onclick='initComment("+num+")'>"+num+"</a></li>";
+                                    i=num;
+                                }else {
+                                    p_str += "<li><a onclick='initComment(0)'>...</a></li>";
+                                    i=page-2;
+                                }
+                            }else {
+                                if(i==4){
+                                    p_str += "<li><a onclick='initComment(0)'>...</a></li>";
+                                    i = num-3;
+                                    continue;
+                                }
+                                if(page == i){
+                                    p_str += "<li class='active'><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                }else {
+                                    p_str += "<li><a onclick='initComment("+i+")'>"+i+"</a></li>";
+                                }
+                            }
+                        }
+                    }
+                    $('#page').append(p_str);
+                    $.each(data.info.info,function (i,value) {
+                        str += "<div style='line-height:1.1;margin-top: 5px' class='col-sm-8'>";
+                        str += "<span class='label label-default'><b>"+value['name']+"</b></span>:";
+                        str += "<span style='font-size: small;color: black;word-break:break-all;'>"+value['content']+"</span>";
+                        str += "</div>";
+                    });
+                    $('#show_comment').append(str);
+                }
+            },
+            error:function () {
+                toastr.error('服务器有点跟不上您的速度哦~');
+            }
+        });
+    }
+
+    //toastr.warning('warning!!!');
+    $('#comment_submit').click(function () {
+        $("#comment_submit").attr('disabled','disabled');
+        var comment = $('#comment').val();
+        if(comment.length<10){
+            toastr.warning('请输入至少10个字符');
+            $("#comment_submit").removeAttr("disabled");
+            return false;
+        }
+        if(comment.length>150){
+            toastr.warning('评论字数最多150个字符');
+            $("#comment_submit").removeAttr("disabled");
+            return false;
+        }
+
+        $.ajax({
+            'type':'post',
+            'dataType':'json',
+            'data':{'comment':comment,'article_id':article_id},
+            'url':'/index/article/saveComment',
+            success:function (data) {
+                if(data.code == 2){
+                    $("#comment_submit").removeAttr("disabled");
+                    window.location.href='/login/2';
+                }else {
+                    if(data.code==0){
+                        toastr.success(data.msg);
+                        setTimeout(function () {
+                            window.location.reload();
+                        },1000);
+                        return true;
+                    }else {
+                        toastr.warning(data.msg);
+                        $("#comment_submit").removeAttr("disabled");
+                    }
+                }
+            },
+            error:function(){
+                toastr.error('服务器错误，请稍后重新尝试');
+                $("#comment_submit").removeAttr("disabled");
+            }
+        });
+    });
+
+
+    $('#refund').click(function () {
+        window.history.back(-1);
+    });
+</script>
+
+
+
+</body></html>
