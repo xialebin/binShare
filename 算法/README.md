@@ -1,16 +1,17 @@
 ## 算法
 
-####题目目录：<br>
-（1）求猴子大王的编号
->一个
->>两个
+>####说明：<br>
 
-[你好](http://www.baidu.com)
+<i>该算法列表中的题目是笔者从网络、书籍上整理而来，且用自己的理解，使用C++、Go、PHP进行实现，解析内容使用Go语言进行举例，目的是记录学习点滴，与大家共同进步。笔者能力有限，仅供参考。</i>
 
-<span id="jump">跳转内容目标</span>
+>####题目目录：<br>
+>>（1）[求猴子大王的编号](#jump_1)<br>
+>>（2）[冒泡排序](#jump_2)<br>
 
 
-df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>
-df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>df<br>
+####解析：<br>
+<span id="jump_1">（1）求猴子大王的编号</span><br>
+
+
 
 [hlelo](#jump)
