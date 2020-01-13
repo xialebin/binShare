@@ -95,7 +95,7 @@ func main()  {
 
 场景：根据股票的折线图，求出买入与卖出的利益最大化的日期，可以根据当天的价格与前一天的价格进行比较存入数组，最后求最大数组和问题。如下：
 
-![image](https://github.com/xialebin/binStudy/tree/master/%E7%AE%97%E6%B3%95/z_images/jump_3_1.png)
+![Image text](https://github.com/xialebin/binStudy/blob/master/%E7%AE%97%E6%B3%95/z_images/jump_3_1.png)
 
 
 
