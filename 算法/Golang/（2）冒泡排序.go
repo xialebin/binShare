@@ -8,9 +8,7 @@ func bubbleSort(data []int) []int {
 		for j:=0;j<len(data)-i-1;j++  {
 			//这里的j+1决定了为什么内层循环要-1
 			if  data[j]>data[j+1]{
-				temp := data[j+1]
-				data[j+1] = data[j]
-				data[j] = temp
+				data[j+1],data[j] = data[j],data[j+1]
 			}
 		}
 	}
