@@ -10,7 +10,8 @@
 >>（3）[求数组的最大子数组或最大子序列和](#jump_3)<br>
 
 
-###解析：<br>
+>解析：<br>
+
 <span id="jump_1">（1）求猴子大王的编号</span><br>
 ```
 一群猴子排成一圈，按1、2、...、n依次编号。然后从第一只开始数，数到第m只把它提出圈，从它后面再开始数，再数到第m只，把它踢出去...，如此不停的进行下去，直到最后只剩下一只猴子为止，那只猴子就叫做大王。要求编程模拟这个过程，输入m,n 输出最后那个大王的编号。
@@ -95,8 +96,7 @@ func main()  {
 
 场景：根据股票的折线图，求出买入与卖出的利益最大化的日期，可以根据当天的价格与前一天的价格进行比较存入数组，最后求最大数组和问题。如下：
 
-![Image text](https://github.com/xialebin/binStudy/blob/master/%E7%AE%97%E6%B3%95/z_images/jump_3_1.png)
-
+![image](https://github.com/xialebin/binStudy/blob/master/%E7%AE%97%E6%B3%95/z_images/jump_3_1.png)
 
 
 
