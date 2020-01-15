@@ -92,13 +92,87 @@ func main()  {
 
 ```
 <span id="jump_3">（3）求数组的最大子数组或最大子序列和</span><br>
-
-
+```
 场景：根据股票的折线图，求出买入与卖出的利益最大化的日期，可以根据当天的价格与前一天的价格进行比较存入数组，最后求最大数组和问题。如下：
-
+```
 ![image](https://github.com/xialebin/binStudy/blob/master/%E7%AE%97%E6%B3%95/z_images/jump_3_1.png)
 
+求最大子序列的和可以使用暴力法求解，即将所有的子序列展开，判断和的最大值，这里不再赘述。下面使用分治法的思想和递归来处理。<br>
 
+思路：<br>
 
+将数组序列平分成两段<br>
+数组的最大子序列只会出现下面三种情况：<br>
+1、最大子序列全部在左边 <br>
+2、最大子序列全部在右边<br>
+3、最大子序列横跨中点<br>
+
+所以我们可以这样求解：<br>
+
+求得左边最大子序列的和A<br>
+求得右边最大子序列的和B<br>
+根据左边最后一个值向左求最大子序列 a<br>
+根据右边最后一个值向右求最大子序列 b<br>
+
+比较返回 A,B,a+b 三者中最大的一个即为最大子序列的和<br>
+而A、B的求解可以通过递归求解。<br>
+
+tip:a+b即是横跨中点的子序列，因为从中点开始往两边遍历，肯定包含中点。<br>
+
+```go
+package main
+import "fmt"
+
+func getMaxNum(slice []int,left int,right int)  int{
+
+	if left == right {
+		return slice[left]
+	}
+	midden := (left + right) / 2
+
+	//求包含中点向左序列的最大值
+	var leftMax int
+	var sum int
+	sum = 0
+	for i := midden; i >= left; i-- {
+		sum += slice[i]
+		if sum > leftMax {
+			leftMax = sum
+		}
+	}
+
+	//包含中点向右的最大序列值
+	var rightMax int
+	sum = 0
+	for i := midden + 1; i <= right; i++ {
+		sum += slice[i]
+		if sum>rightMax {
+			rightMax = sum
+		}
+	}
+
+	leftNum := getMaxNum(slice,left,midden)
+	rightNum := getMaxNum(slice,midden+1,right)
+
+	var max int
+	if leftNum > rightNum{
+		max = leftNum
+	}else {
+		max = rightNum
+	}
+
+	if max > (leftNum+rightNum) {
+		return max
+	}else {
+		return leftNum+rightNum
+	}
+}
+
+func main()  {
+	slice := []int{1,2,-3}
+	num := getMaxNum(slice,0,len(slice) - 1)
+	fmt.Println(num)
+}
+```
 
 
