@@ -8,6 +8,7 @@
 >>（1）[求猴子大王的编号](#jump_1)<br>
 >>（2）[冒泡排序](#jump_2)<br>
 >>（3）[求数组的最大子数组或最大子序列和](#jump_3)<br>
+>>（4）[求第N个斐波那契数列（黄金分割数列）](#jump_4)<br>
 
 
 >解析：<br>
@@ -174,5 +175,61 @@ func main()  {
 	fmt.Println(num)
 }
 ```
+
+<span id="jump_4">（4）求第N个斐波那契数列（黄金分割数列）</span><br>
+
+```
+斐波那契数列指的是如：1 1 2 3 5 8 13 21 ... 这样的后面的数依次为前两个数之和的数列
+```
+
+采用递归法是比较直观的方法，但是效率比较低，因为要循环递归两个数n-1和n-2，且递归到边界条件时，再次进行反复累加。
+递归方法如下：
+
+```go
+package main
+
+func fiboRecurve(n int) int{
+
+	if n < 2 {
+		if n == 0 {
+			return 0
+		}else {
+			return 1
+		}
+	}
+
+	return  fiboRecurve(n-1)+fiboRecurve(n-2)
+}
+```
+可以安装顺序从头进行计算，直到求解n-2,n-1
+
+```go
+package main
+func fibonacii(n int)  int{
+
+	//边界数据处理
+	if n<3 {
+		if n == 0 {
+			return 0
+		}else {
+			return 1
+		}
+	}
+	numOne := 1
+	numTwo := 1
+	amount := 2
+
+	for i := 2; i < n; i++{
+                //amount为前两个的和
+		amount = numOne+numTwo
+		numTwo = numOne
+                //将amount的值往前传递
+		numOne = amount
+	}
+	return amount
+}
+
+```
+
 
 
