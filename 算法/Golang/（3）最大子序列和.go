@@ -41,10 +41,10 @@ func getMaxNum(slice []int,left int,right int)  int{
 		max = rightNum
 	}
 
-	if max > (leftNum+rightNum) {
+	if max > (leftMax+rightMax) {
 		return max
 	}else {
-		return leftNum+rightNum
+		return leftMax+rightMax
 	}
 
 }

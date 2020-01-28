@@ -15,4 +15,5 @@
 >>（2）[冒泡排序](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_2)<br>
 >>（3）[求数组的最大子数组或最大子序列和](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_3)<br>
 >>（4）[求第N个斐波那契数列（黄金分割数列）](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_4)<br>
->>（5）[求第N个斐波那契数列（黄金分割数列）](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_4)<br>
+>>（5）[青蛙跳台阶问题](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_5)<br>
+>>（6）[数组中重复的数字](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_6)<br>
