@@ -9,6 +9,8 @@
 >>（3）[关系数据库系列文章之数据库的完整性（三）](https://youzfx.cn/article/7)<br>
 >>（4）[索引原理浅析](https://youzfx.cn/article/17)<br>
 >>（5）[MySQL中索引应用浅析](https://youzfx.cn/article/18)<br>
+>>（6）[深入理解TCP协议上](https://youzfx.cn/article/21)<br>
+>>（7）[深入理解TCP协议下](https://youzfx.cn/article/22)<br>
 
 >算法：<br>
 >>（1）[求猴子大王的编号](https://github.com/xialebin/binShare/tree/master/%E7%AE%97%E6%B3%95#jump_1)<br>
